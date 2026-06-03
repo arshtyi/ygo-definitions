@@ -1,0 +1,73 @@
+name: Build and Deploy PDF
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs.typ
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Fontist
+        uses: fontist/setup-fontist@v2
+
+      - name: Install fonts
+        run: fontist install "Noto Serif CJK SC" "JetBrains Mono" "Times New Roman" --newest -a -h
+
+      - name: Set up Typst
+        uses: typst-community/setup-typst@v5
+
+      - name: Compile PDF
+        run: |
+          mkdir -p _site
+          typst compile docs.typ _site/docs.pdf --font-path ~/.fontist/fonts
+
+      - name: Create Pages index
+        run: |
+          cat > _site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="zh-CN">
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>ygo-definitions</title>
+              <style>
+                html,
+                body {
+                  width: 100%;
+                  height: 100%;
+                  margin: 0;
+                }
+
+                iframe {
+                  width: 100%;
+                  height: 100%;
+                  border: 0;
+                }
+              </style>
+            </head>
+            <body>
+              <iframe
+                src="docs.pdf"
+                title="ygo-definitions"
+              >
+                <a href="docs.pdf">打开 PDF</a>
+              </iframe>
+            </body>
+          </html>
+          HTML
+
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          publish_dir: ./_site
+          github_token: ${{ secrets.GITHUB_TOKEN }}
