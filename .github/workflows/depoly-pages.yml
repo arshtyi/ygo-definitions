@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - docs.typ
+      - justfile
+      - .github/workflows/depoly-pages.yml
 
 permissions:
   contents: write
@@ -18,19 +20,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Set up just
+        uses: extractions/setup-just@v3
+
       - name: Set up Fontist
         uses: fontist/setup-fontist@v2
 
       - name: Install fonts
-        run: fontist install "Noto Serif CJK SC" "JetBrains Mono" "Times New Roman" --newest -a -h
+        run: |
+          fontist install "Noto Serif CJK SC" "Lato" "JetBrains Mono" --newest -a -h
+          echo "TYPST_FONT_PATHS=$HOME/.fontist/fonts" >> "$GITHUB_ENV"
 
       - name: Set up Typst
         uses: typst-community/setup-typst@v5
 
-      - name: Compile PDF
+      - name: Build PDF with just and Typst
         run: |
+          just setup
+          just compile
           mkdir -p _site
-          typst compile docs.typ _site/docs.pdf --font-path ~/.fontist/fonts
+          cp docs.pdf _site/docs.pdf
 
       - name: Create Pages index
         run: |

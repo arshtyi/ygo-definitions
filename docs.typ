@@ -1,5 +1,5 @@
 #import "@preview/numbly:0.1.0": *
-#import "@preview/octique:0.1.1": octique-inline
+#import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
 
 #let title = "ygo-definitions"
 #let author = "arshtyi"
@@ -9,8 +9,8 @@
 
 #let fonts = (
     cjk: "Noto Serif CJK SC",
-    latin: "Times New Roman",
-    chip: "JetBrains Mono",
+    latin: "Lato",
+    mono: "JetBrains Mono",
 )
 #set page(
     paper: "a4",
@@ -53,7 +53,6 @@
 }
 #set enum(numbering: numbly("{1:1}.", "{2:a}."))
 #set list(indent: 6pt, marker: sym.bullet.tri)
-#let linkto(url, icon: "link") = link(url, box(h(.25em) + octique-inline(color: blue.darken(40%), icon) + h(.25em)))
 #let palette = (
     int: (
         fill: rgb("#FEF0C7"),
@@ -90,7 +89,7 @@
     outset: (y: 0.20em),
     radius: 0.34em,
     text(
-        font: fonts.chip,
+        font: fonts.mono,
         size: 0.86em,
         weight: "regular",
         fill: style.ink,
@@ -130,273 +129,384 @@
         it
     }
 }
+#show link: it => underline(offset: 3.5pt, stroke: 1.5pt, it)
+#show raw: set text(font: (fonts.mono, fonts.cjk))
+#show raw.where(block: false): box.with(
+    fill: luma(240),
+    inset: (x: .3em, y: 0em),
+    outset: (x: 0em, y: .3em),
+    radius: .2em,
+)
 
 = introduction
 
-- 本项目ygo-definitions#linkto("https://github.com/arshtyi/ygo-definitions")是ygo-cards#linkto("https://github.com/arshtyi/ygo-cards")及其衍生项目链路（以下称为"本链路"）的数据定义说明。
-- 所用到数据的原始定义主要见`ygopro-core/common.h`#linkto("https://github.com/Fluorohydride/ygopro-core/blob/master/common.h")，具体的字段码见`strings.conf`#linkto("https://github.com/mycard/ygopro-database/blob/master/locales/zh-CN/strings.conf")。
-- 此链路专注于OCG、TCG、RD环境，不包括MD、Genesys环境。
+- 本项目#link("https://github.com/arshtyi/ygo-definitions")[ygo-definitions]是#link("https://github.com/arshtyi/ygo-cards")[ygo-cards]的数据约定和掩码说明
+- 仅包括OCG、TCG、Rush Duel环境，不包括Master Duel、Genesys环境
+- 每张卡是一个包含若干属性的JSON #json-type("object")
 
-= preliminaries
+= ot
 
-- 形式地，每张卡是一个JSON #json-type("object")，包含一些字段。
-- 此链路中的所有字段都是卡面记述，且以简中YGOPro翻译为主。
-- 一张卡不应当拥有的字段不被记录。
-- 绝大多数字段若没有合法的值，此卡被跳过。
-
-= ocg
-
-本章针对于OCG、TCG。
+#let masks = json("assets/ot-field-mappings.json")
+#let hash = read("assets/ot-field-mappings.json.sha256sum").slice(0, 64)
+#figure(
+    table(
+        columns: 2,
+        [hash], hash,
+    ),
+    caption: [OCG & TCG Hash],
+)
 
 == general
-
-本节字段为所有卡拥有。
 
 === id
 
 #json-property("id", "int")[
-    一张卡的卡片密码，唯一确定这张卡。
-
-    - 正式卡此字段的值（不含前导零）长度不超过$8$位。
-    - 非正式卡此字段的值（含前导零）长度不低于$8$位。
-    - 此字段的值在此链路中不显式包含前导零。
+    一张卡的卡片密码，唯一确定这张卡，长度不超过$8$位
 ] <ot:id>
 
 === name
 
 #json-property("name", "str")[
-    一张卡的卡名。
+    一张卡的卡名
 ] <ot:name>
 
 === attribute
 
 #json-property("attribute", "int")[
-    一张卡的属性。
+    一张卡的属性
 
-    - 怪兽卡此字段的值为$[0,6]$的某整数，对应神·光·暗·风·地·炎·水。
-    - 魔法卡此字段的值为$0$，对应魔法。
-    - 陷阱卡此字段的值为$0$，对应陷阱。
+    - 怪兽的值为$[0,6]$的某整数，对应怪兽的神·光·暗·风·地·炎·水属性
+    - 魔法的值为$0$，对应魔法属性
+    - 陷阱的值为$0$，对应陷阱属性
+
+    #figure(
+        table(
+            columns: masks.attributeCodes.len() + 1,
+            [掩码], ..masks.attributeCodes.map(attribute => attribute.rawCode),
+            [值], ..masks.attributeCodes.map(attribute => attribute.outputValue).map(str)
+        ),
+        caption: [OCG & TCG Attribute],
+    )
 ] <ot:attribute>
 
 === image
 
 #json-property("image", "int")[
-    一张卡的中心图编号。
+    一张卡的中心图编号
 
-    - 此字段必须具有确定、可验证、符合的值。若无，值为$0$（因为此字段的非法值一般是上游造成的）。
-    - 一般地，此字段的值对应此卡的官方中心图。
-    - 对于衍生物，若没有对应的官方中心图，此字段的值将考虑退化到将此衍生物特殊召唤的卡的此字段的值。
+    - 确定、可验证、符合的中心图编号。若无，值为$0$
+    - 一般地，值对应此卡的官方中心图
 ] <ot:image>
 
 === description
 
 #json-property("description", "str")[
-    一张卡的描述。
+    一张卡的描述文本
 ] <ot:description>
 
 === alias
 
 #json-property("alias", "int")[
-    异画的原画@ot:id，值为$0$表明这是一张原画。
+    异画的原画@ot:id，值为$0$表明这是一张原画
 ] <ot:alias>
 
 === type
 
 #json-property("type", "array")[
-    一张卡的类型，值为包含类型（#json-type("str")）的数组。
+    一张卡的类型，值为具体类型（#json-type("str")）的数组```json ["primary type", "subtype"]```
 
-    - 怪兽卡此字段的值是`["怪兽", "种族", ...]`形式，其中"怪兽"近些年不再是卡面记述，但是为方便后续处理此处加上。
-    - 魔法卡此字段的值是`["魔法", "类型"]`形式，虽然不是卡面记述，但是为方便后续处理此处加上。
-    - 陷阱卡此字段的值是`["陷阱", "类型"]`形式，虽然不是卡面记述，但是为方便后续处理此处加上。
+    #figure(
+        table(
+            columns: masks.primaryTypeFlags.len() + 1,
+            [掩码], ..masks.primaryTypeFlags.map(type => type.mask),
+            [值], ..masks.primaryTypeFlags.map(type => type.outputName),
+        ),
+        caption: [OCG & TCG Primary Type],
+    )
+    #figure(
+        {
+            let chunk-size = 6
+            table(
+                columns: chunk-size + 1,
+                ..{
+                    let cells = ()
+                    for chunk in masks.subtypeFlags.rev().chunks(chunk-size) {
+                        let padding = chunk-size - chunk.len()
+                        cells += ([掩码],) + chunk.map(type => type.mask) + ([],) * padding
+                        cells += ([值],) + chunk.map(type => type.outputName) + ([],) * padding
+                    }
+                    cells
+                }
+            )
+        },
+        caption: [OCG & TCG Card Subtype],
+    )
+    #figure(
+        {
+            let chunk-size = 7
+            table(
+                columns: chunk-size + 1,
+                ..{
+                    let cells = ()
+                    for chunk in masks.raceCodes.chunks(chunk-size) {
+                        let padding = chunk-size - chunk.len()
+                        cells += ([掩码],) + chunk.map(type => type.rawCode) + ([],) * padding
+                        cells += ([值],) + chunk.map(type => type.outputName) + ([],) * padding
+                    }
+                    cells
+                }
+            )
+        },
+        caption: [OCG & TCG Race],
+    )
+    为兼容上游数据，需对一些类型作合法性推断
+    #figure(
+        table(
+            columns: 2,
+            [掩码], masks.inferredMonsterTypeMask,
+        ),
+        caption: [OCG & TCG Inferred Monster Type],
+    )
 ] <ot:type>
 
 === lf
 
 #json-property("lf", "array")[
-    一张卡的规制，值为包括OCG、TCG规制（值为可投入数量$[0,3]$，#json-type("int")）的数组。
+    一张卡的禁限，值为OCG、TCG可投入数量($[0,3]$，#json-type("int")）的数组```json [ocg, tcg]```
 ] <ot:lf>
 
 == monster
 
-本节字段为怪兽卡专属。
-
 === atk
 
 #json-property("atk", "int")[
-    怪兽卡的攻击力，值为$[-1,+infinity)$的某整数。
-
-    - $-1$表示卡面记述"？"。
+    怪兽的攻击力，值为$[-1,+infinity)$的某整数
 ] <ot:atk>
 
 === def
 
 #json-property("def", "int")[
-    非连接怪兽卡的守备力，值为$[-1,+infinity)$的某整数。
-
-    - $-1$表示卡面记述"？"。
+    怪兽的守备力，值为$[-1,+infinity)$的某整数
 ] <ot:def>
 
 === level
 
 #json-property("level", "int")[
-    非超量、连接怪兽卡的等级，值为$[0,13]$的某整数。
+    怪兽的等级，值为$[0,13]$的某整数
 ] <ot:level>
 
 === rank
 
 #json-property("rank", "int")[
-    超量怪兽卡的阶级，值为$[0,13]$的某整数。
+    怪兽的阶级，值为$[0,13]$的某整数
 ] <ot:rank>
 
 === pendulumScale
 
 #json-property("pendulumScale", "int")[
-    灵摆怪兽卡的灵摆刻度，值为$[0,13]$的某整数。
+    怪兽的灵摆刻度，值为$[0,13]$的某整数
 ] <ot:pendulumScale>
 
 === pendulumDescription
 
 #json-property("pendulumDescription", "str")[
-    灵摆怪兽的灵摆描述。
+    怪兽的灵摆描述文本
 ] <ot:pendulumDescription>
 
 === linkValue
 
 #json-property("linkValue", "int")[
-    连接怪兽卡的连接值，值为$[1,8]$的某整数。
+    怪兽的连接值，值为$[1,8]$的某整数
 ] <ot:linkValue>
 
 === linkMarker
 
-#json-property("maker", "array")[
-    连接怪兽卡的连接标记，值为包含连接标记（#json-type("int")）的数组。以左上角（top-left）为起始，逆时针方向
-    #align(center, table(
-        columns: (10em, 8em),
-        stroke: none,
-        [location], $i$,
-        table.hline(),
-        [top-left], $0$,
-        [left], $1$,
-        [bottom-left], $2$,
-        [bottom], $3$,
-        [bottom-right], $4$,
-        [right], $5$,
-        [top-right], $6$,
-        [top], $7$,
-    ))
+#json-property("marker", "array")[
+    怪兽的连接标记，值为包含连接标记（#json-type("int")）的数组。
+    #figure(
+        table(
+            columns: masks.linkMarkerFlags.len() + 1,
+            [掩码], ..masks.linkMarkerFlags.map(type => type.mask),
+            [值], ..masks.linkMarkerFlags.map(type => type.outputPosition).map(str)
+        ),
+        caption: [OCG & TCG Link Marker],
+    )
 ] <ot:linkMarker>
-
-== under consideration
-
-=== archetype
-
-卡的字段（不是JSON字段）。此对整条链路并无太大作用。
 
 = rd
 
-本章针对于RD。
+#let masks = json("assets/rd-field-mappings.json")
+#let hash = read("assets/rd-field-mappings.json.sha256sum").slice(0, 64)
+#figure(
+    table(
+        columns: 2,
+        [hash], hash,
+    ),
+    caption: [Rush Duel Hash],
+)
 
 == general
-
-本节字段为所有卡拥有。
 
 === legend
 
 #json-property("legend", "bool")[
-    一张卡是否为传说卡。
+    一张卡是否为传说卡
+
+    #figure(
+        table(
+            columns: 2,
+            [掩码], masks.legendTypeMask,
+            [值], [1],
+        ),
+        caption: [Rush Duel Legend Type],
+    )
 ] <rd:legend>
 
 === id
 
 #json-property("id", "int")[
-    一张卡的卡片密码，唯一确定这张卡。
-
-    - 正式卡此字段的值长度不低于$9$位。
+    一张卡的卡片密码，唯一确定这张卡
 ] <rd:id>
 
 === name
 
 #json-property("name", "str")[
-    一张卡的卡名。
+    一张卡的卡名
 ] <rd:name>
 
 === attribute
 
 #json-property("attribute", "int")[
-    一张卡的属性。
+    一张卡的属性
 
-    - 怪兽卡此字段的值为$[0,5]$的某整数，对应光·暗·风·地·炎·水。
-    - 魔法卡此字段的值为$0$，对应魔法。
-    - 陷阱卡此字段的值为$0$，对应陷阱。
+    - 怪兽的值为$[0,5]$的某整数，对应怪兽的光·暗·风·地·炎·水属性
+    - 魔法的值为$0$，对应魔法属性
+    - 陷阱的值为$0$，对应陷阱属性
+
+    #figure(
+        table(
+            columns: masks.attributeCodes.len() + 1,
+            [掩码], ..masks.attributeCodes.map(attribute => attribute.rawCode),
+            [值], ..masks.attributeCodes.map(attribute => attribute.outputValue).map(str)
+        ),
+        caption: [Rush Duel Attribute],
+    )
 ] <rd:attribute>
 
 === image
 
 #json-property("image", "int")[
-    一张卡的中心图编号。
+    一张卡的中心图编号
 
-    - 此字段必须具备确定、可验证、符合的值。若无，值为$0$（因为此字段的非法值一般是上游造成的）。
-    - 一般地，此字段的值对应此卡的官方中心图。
+    - 确定、可验证、符合的值。若无，值为$0$
+    - 一般地，值对应此卡的官方中心图
 ] <rd:image>
 
 === type
 
 #json-property("type", "array")[
-    一张卡的类型，值为包含类型（#json-type("str")）的数组。
+    一张卡的类型，值为具体类型（#json-type("str")）的数组```json ["primary type", "subtype"]```
 
-    - 怪兽卡此字段的值是`["怪兽", "种族", ...]`形式，其中"怪兽"不是卡面记述，但是为方便后续处理此处加上。
-    - 魔法卡此字段的值是`["魔法", "类型"]`形式。
-    - 陷阱卡此字段的值是`["陷阱", "类型"]`形式。
+    #figure(
+        table(
+            columns: masks.primaryTypeFlags.len() + 1,
+            [掩码], ..masks.primaryTypeFlags.map(type => type.mask),
+            [值], ..masks.primaryTypeFlags.map(type => type.outputName),
+        ),
+        caption: [Rush Duel Primary Type],
+    )
+    #figure(
+        table(
+            columns: masks.subtypeFlags.len() + 1,
+            [掩码], ..masks.subtypeFlags.rev().map(type => type.mask),
+            [值], ..masks.subtypeFlags.rev().map(type => type.outputName),
+        ),
+        caption: [Rush Duel Subtype],
+    )
+    #figure(
+        {
+            let chunk-size = 5
+            table(
+                columns: chunk-size + 1,
+                ..{
+                    let cells = ()
+                    for chunk in masks.raceCodes.chunks(chunk-size) {
+                        let padding = chunk-size - chunk.len()
+                        cells += ([掩码],) + chunk.map(type => type.rawCode) + ([],) * padding
+                        cells += ([值],) + chunk.map(type => type.outputName) + ([],) * padding
+                    }
+                    cells
+                }
+            )
+        },
+        caption: [Rush Duel Race],
+    )
+
+    为兼容仪式怪兽，需对仪式怪兽进行融合怪兽掩码处理
+    #figure(
+        table(
+            columns: 3,
+            [掩码], masks.fusionTypeMask, masks.ritualTypeMask,
+            [说明], [融合怪兽], [仪式怪兽],
+        ),
+        caption: [Rush Duel Fusion & Ritual],
+    )
 ] <rd:type>
 
 === lf
 
 #json-property("lf", "int")[
-    一张卡的规制，值为$[0,3]$的某整数代表可投入数量。
+    一张卡的禁限，值为$[0,3]$的某整数代表可投入数量
 ] <rd:lf>
 
 === description
 
 #json-property("description", "str")[
-    一张卡的描述。
+    一张卡的描述文本
 ] <rd:description>
 
 === alias
 
 #json-property("alias", "int")[
-    异画的原画@rd:id，值为$0$表明这是一张原画。
+    异画的原画@rd:id，值为$0$表明这是一张原画
 ] <rd:alias>
 
 == monster
 
-本节字段为怪兽卡专属。
-
 === atk
 
 #json-property("atk", "int")[
-    怪兽卡的攻击力，值为$[0,+infinity)$的某整数。
+    怪兽的攻击力，值为$[0,+infinity)$的某整数
 ] <rd:atk>
 
 === def
 
 #json-property("def", "int")[
-    怪兽卡的守备力，值为$[0,+infinity)$的某整数。
+    怪兽的守备力，值为$[0,+infinity)$的某整数
 ] <rd:def>
 
 === level
 
 #json-property("level", "int")[
-    怪兽卡的等级，值为$[0,13]$的某整数。
+    怪兽的等级，值为$[0,13]$的某整数
 ] <rd:level>
 
 === maximum
 
 #json-property("maximum", "int")[
-    极大怪兽卡的位置，值为$[0,2]$的某整数，对应左·中·右。
+    极大怪兽的位置，值为$[0,2]$的某整数，对应左·中·右
+    #figure(
+        table(
+            columns: masks.maximumPositionMarkers.len() + 1,
+            [标记], ..masks.maximumPositionMarkers.map(type => type.markers.join("/")),
+            [值], ..masks.maximumPositionMarkers.map(type => type.position).map(str)
+        ),
+        caption: [Rush Duel Card Maximum Marker],
+    )
 ] <rd:maximum>
 
 === maximumAtk
 
 #json-property("maximumAtk", "int")[
-    极大怪兽的极大攻击力，值为$[0,+infinity)$的某整数。
+    怪兽的极大攻击力，值为$[0,+infinity)$的某整数
 ] <rd:maximumAtk>
