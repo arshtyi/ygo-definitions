@@ -1,5 +1,6 @@
 #import "@preview/numbly:0.1.0": *
 #import "@preview/octique:0.1.1": octique-inline
+#import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
 
 #let title = "ygo-definitions"
 #let author = "arshtyi"
@@ -133,7 +134,7 @@
 
 = introduction
 
-- 本项目ygo-definitions#linkto("https://github.com/arshtyi/ygo-definitions")是ygo-cards#linkto("https://github.com/arshtyi/ygo-cards")及其衍生项目链路（以下称为"本链路"）的数据定义说明。
+- 本项目ygo-definitions#linkto("https://github.com/arshtyi/ygo-definitions")是ygo-cards#linkto("https://github.com/arshtyi/ygo-cards")及其衍生项目链路（以下称为"本链路"）的数据字段定义说明。
 - 所用到数据的原始定义主要见`ygopro-core/common.h`#linkto("https://github.com/Fluorohydride/ygopro-core/blob/master/common.h")，具体的字段码见`strings.conf`#linkto("https://github.com/mycard/ygopro-database/blob/master/locales/zh-CN/strings.conf")。
 - 此链路专注于OCG、TCG、RD环境，不包括MD、Genesys环境。
 
@@ -142,9 +143,9 @@
 - 形式地，每张卡是一个JSON #json-type("object")，包含一些字段。
 - 此链路中的所有字段都是卡面记述，且以简中YGOPro翻译为主。
 - 一张卡不应当拥有的字段不被记录。
-- 绝大多数字段若没有合法的值，此卡被跳过。
+- 绝大多数字段若没有合法的值，此卡被跳过（目前来说，仅有一些占位卡会被跳过，这些卡本来也不是合法的卡，理应被跳过）。
 
-= ocg
+= ot
 
 本章针对于OCG、TCG。
 
@@ -400,3 +401,111 @@
 #json-property("maximumAtk", "int")[
     极大怪兽的极大攻击力，值为$[0,+infinity)$的某整数。
 ] <rd:maximumAtk>
+
+#pagebreak()
+#set page(height: auto, width: auto, header: none, margin: 10pt, footer: none)
+#align(center, text(size: 15pt)[appendix: project relationship map])
+#set text(size: 15pt)
+
+#let (definitions, assets, fonts, cards, template, web, desktop, cli, lf) = (
+    [ygo-definitions#linkto("https://github.com/arshtyi/ygo-definitions")：数据字段定义],
+    [ygo-assets#linkto("https://github.com/arshtyi/ygo-assets")：所有卡模],
+    [ygo-fonts#linkto("https://github.com/arshtyi/ygo-fonts")：对可用于复刻卡面的字体进行测试与对比],
+    [ygo-cards#linkto("https://github.com/arshtyi/ygo-cards")：标准卡片数据],
+    [typst-ygo#linkto("https://github.com/arshtyi/typst-ygo")：typst卡片模板],
+    [typst-ygo-web#linkto("https://github.com/arshtyi/typst-ygo-web")：在线版生成器],
+    [ygo-draw#linkto("https://github.com/arshtyi/ygo-draw")：桌面版生成器],
+    [ygo-draw-cli#linkto("https://github.com/arshtyi/ygo-draw-cli")：命令行版生成器],
+    [ygo-lf#linkto("https://github.com/arshtyi/ygo-lf")：最新禁限列表],
+).map(it => block(inset: (x: 12pt, y: 8pt), it))
+
+#figure({
+    let definition-color = rgb("#7C3AED")
+    let font-color = rgb("#64748B")
+    let assets-color = rgb("#0284C7")
+    let cards-color = rgb("#059669")
+    let template-color = rgb("#EA580C")
+    let dependency-edge = color => edge.with(marks: "-|>", stroke: 1.15pt + color)
+    let legend-item(color, body) = box(
+        grid(
+            columns: (auto, auto),
+            gutter: .45em,
+            align: horizon,
+            circle(radius: .24em, fill: color, stroke: none), text(size: .78em, fill: rgb("#334155"), body),
+        ),
+        inset: (x: .62em, y: .34em),
+        radius: 4pt,
+        fill: color.lighten(92%),
+        stroke: .55pt + color.lighten(62%),
+    )
+    let legend = box(
+        grid(
+            columns: (auto,) * 6,
+            gutter: .6em,
+            text(size: 1em, weight: "semibold", fill: rgb("#475569"))[图例],
+            legend-item(definition-color, [给出数据字段定义]),
+            legend-item(font-color, [提供所需的部分字体]),
+            legend-item(assets-color, [提供所需卡模资源]),
+            legend-item(cards-color, [提供标准数据]),
+            legend-item(template-color, [提供稳定模板]),
+        ),
+        inset: .55em,
+        radius: 7pt,
+        fill: rgb("#F8FAFC"),
+        stroke: .6pt + rgb("#E2E8F0"),
+    )
+
+    stack(
+        spacing: 1.1em,
+        align(center, legend),
+        diagram(
+            node-stroke: .75pt + rgb("#CBD5E1"),
+            node-fill: white,
+            node-inset: 0pt,
+            node-corner-radius: 6pt,
+            cell-size: (9cm, 5cm),
+
+            node((0, 0), definitions, name: <definitions>),
+            node((1, 0), cards, name: <cards>),
+            node((0, 1), assets, name: <assets>),
+            node((1, 1), template, name: <template>),
+            node((0, 2), fonts, name: <fonts>),
+
+            // Draw the group first so its background stays behind its members.
+            node(
+                pos: (2.25, 1),
+                name: <generators>,
+                enclose: (<generators-title>, <web>, <desktop>, <cli>),
+                inset: 16pt,
+                fill: rgb("#F8FAFC"),
+                stroke: .9pt + rgb("#94A3B8"),
+                corner-radius: 10pt,
+                snap: -1,
+            ),
+            node(
+                (2.45, -.38),
+                text(size: .82em, weight: "semibold", fill: rgb("#475569"))[生成器],
+                name: <generators-title>,
+                inset: 0pt,
+                fill: none,
+                stroke: none,
+            ),
+            node((2.45, 0), web, name: <web>),
+            node((2.45, 1), desktop, name: <desktop>),
+            node((2.45, 2), cli, name: <cli>),
+            node((1, 2), lf, name: <lf>),
+
+            dependency-edge(definition-color)(<definitions>, <cards>),
+            dependency-edge(definition-color)(<definitions>, <template>),
+            dependency-edge(font-color)(<assets>, <fonts>),
+            dependency-edge(assets-color)(<assets>, <template>),
+            dependency-edge(cards-color)(<cards>, <template>),
+            dependency-edge(assets-color)(<assets>, (0.72, 1.34), (1.62, 1.34), <generators>),
+            dependency-edge(cards-color)(<cards>, <generators>),
+            dependency-edge(template-color)(<template>, <generators>),
+            dependency-edge(assets-color)(<assets>, <lf>),
+            dependency-edge(cards-color)(<cards>, (1.5, .52), (1.5, 1.48), <lf>),
+            dependency-edge(template-color)(<template>, <lf>),
+        ),
+    )
+})
