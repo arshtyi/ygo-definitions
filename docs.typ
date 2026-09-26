@@ -140,8 +140,8 @@
 
 = introduction
 
-- 本项目#link("https://github.com/arshtyi/ygo-definitions")[ygo-definitions]是#link("https://github.com/arshtyi/ygo-cards")[ygo-cards]的数据约定和掩码说明
-- 仅包括OCG、TCG、Rush Duel环境，不包括Master Duel、Genesys环境
+- 本项目#link("https://github.com/arshtyi/ygo-definitions")[ygo-definitions]是#link("https://github.com/arshtyi/ygo-cards")[ygo-cards]的数据约定和相关说明
+- 仅包括OCG、TCG、Rush Duel环境，不包括Master Duel环境
 - 每张卡是一个包含若干属性的JSON #json-type("object")
 
 = ot
@@ -209,6 +209,12 @@
 #json-property("alias", "int")[
     异画的原画@ot:id，值为$0$表明这是一张原画
 ] <ot:alias>
+
+=== genesys
+
+#json-property("genesys", "int")[
+    一张卡的genesys值，值为$[-1,+infinity]$的某一整数
+] <ot:genesys>
 
 === type
 
